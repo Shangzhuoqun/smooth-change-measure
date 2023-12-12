@@ -91,7 +91,7 @@ def measureADomain(thdno, priority, domain) -> int:
         return -1
     
     if domain not in domainNSS:
-        domainNSS = nss
+        domainNSS[domain] = nss
         msg = makeMsg(
             "first trust",
             domain, 
@@ -156,7 +156,7 @@ def measureADomain(thdno, priority, domain) -> int:
 
     
 
-def checkAlive(thdno, priority, domain, nsip, startTime):
+def checkAlive(thdno, priority, domain, nsip, startTime) -> int:
     nss, ttl = Query.GetAuthFromAuth(domain, nsip)
 
     if len(nss) == 0:
@@ -187,9 +187,9 @@ def checkAlive(thdno, priority, domain, nsip, startTime):
     return ttl
 
 def timingExe(func, args): # args[0]是使用的线程编号，args[1]是优先级，func必须返回一个ttl，代表延后时间
-    ttl = func(args)
+    ttl = func(*args)
     if ttl != -1:
-        schedules[args[0]].enter(getTTL(ttl), args[1], timingExe, args)
+        schedules[args[0]].enter(getTTL(ttl), args[1], timingExe, (func, args,))
 
 def StartMeasure():
     init()

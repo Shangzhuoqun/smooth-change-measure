@@ -1,6 +1,6 @@
 import yaml
 class Config:
-    def __init__():
+    def __init__(self):
         pass
     
     def LoadConf(self, file):

@@ -86,10 +86,44 @@ def GetAuthFromSuper(domain) -> Tuple[list, int]:
         for ns in servernames:
             if ns in ns_ip:
                 nss.extend([[ns, ip] for ip in ns_ip[ns]])
+            else:
+                ips, curttl = getIPFromAuths(ns, servers)
+                if len(ips) != 0:
+                    ttl = min(ttl, curttl)
+                    nss.extend([ns, ip] for ip in ips)
 
-        return nss, ttl if flag else recurse(domain, nss)
+        return (nss, ttl) if flag else recurse(domain, nss)
     
     return recurse(domain.lower(), RootServers)
+
+def getIPFromAuth(name, nsip) -> Tuple[list, int]:
+    ns, ip = nsip
+    cmd = f'dig @{ip} {name} a'
+    res = dig(cmd)
+    ips = []
+    ttl = 3600*24*365
+    for line in res:
+        attrs = line.split()
+        curttl = int(attrs[1])
+        if attrs[3] == 'a' and attrs[0] == name.lower():
+            ttl = min(ttl, curttl)
+            ips.append(attrs[4])
+
+    unique(ips)
+    
+    return ips, ttl
+
+def getIPFromAuths(name, nsips) -> Tuple[list, int]:
+    ips = []
+    ttl = 3600*24*365
+    for nsip in nsips:
+        tips, tttl = getIPFromAuth(name, nsip)
+        if len(tips) != 0:
+            ttl = min(ttl, tttl)
+            ips.append(tips)
+    
+    unique(ips)
+    return ips, ttl
 
 def GetAuthFromAuth(domain, nsip) -> Tuple[list, int]:
     ns, ip = nsip
@@ -100,7 +134,7 @@ def GetAuthFromAuth(domain, nsip) -> Tuple[list, int]:
     for line in res:
         attrs = line.split()
         curttl = int(attrs[1])
-        if attrs[3] == 'ns' and attrs[0] == domain:
+        if attrs[3] == 'ns' and attrs[0] == domain.lower():
             ttl = min(ttl, curttl)
             servernames.append(attrs[4])
     
