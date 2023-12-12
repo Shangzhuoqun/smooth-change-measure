@@ -1,0 +1,8 @@
+Measure:
+  domain-file: ./domainlist.txt
+  time-zone: Asia/Shanghai
+  log-path: Log/run.log
+  max-ttl: 3600
+  min-ttl: 600
+  thread-num: 100
+  max-times: 3
