@@ -145,6 +145,8 @@ def measureADomain(thdno, priority, domain) -> int:
                 ttl
             )
 
+            logging.info(msg)
+
             for i in domainNSS[domain]:
                 if i not in nss:
                     timingExe(checkAlive, (thdno, priority, domain, i, curTime()))
