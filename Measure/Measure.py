@@ -77,7 +77,7 @@ def checkContain(a, b):
 
 def measureADomain(thdno, priority, domain) -> int:
     domainChangeInfo[domain][0] += 1
-    nss, ttl = Query.GetAuthFromSuper(domain)
+    nss, ttl, superdetails = Query.GetAuthFromSuper(domain)
     if len(nss) == 0:
         domainChangeInfo[domain][1] += 1
         msg = makeMsg(
@@ -96,7 +96,8 @@ def measureADomain(thdno, priority, domain) -> int:
             "first trust",
             domain, 
             {
-                "nameservers": nss
+                "nameservers": nss,
+                "details": superdetails
             },
             ttl
         )
@@ -110,14 +111,15 @@ def measureADomain(thdno, priority, domain) -> int:
             "not change",
             domain,
             {
-                "nameservers": nss
+                "nameservers": nss,
+                "details": superdetails
             },
             ttl
         )
         logging.info(msg)
         return ttl
     else:
-        oldReplyNss, _ = Query.GetAuthFromAuths(domain, domainNSS[domain])
+        oldReplyNss, _, authdetails = Query.GetAuthFromAuths(domain, domainNSS[domain])
         if not checkContain(oldReplyNss, nss):
             domainChangeInfo[domain][5] += 1
             msg = makeMsg(
@@ -126,7 +128,9 @@ def measureADomain(thdno, priority, domain) -> int:
                 {
                     "new nameservers": nss,
                     "old nameservers": domainNSS[domain],
-                    "old reply nameservers": oldReplyNss
+                    "old reply nameservers": oldReplyNss,
+                    "super details": superdetails,
+                    "auth details": authdetails
                 },
                 ttl
             )
@@ -140,7 +144,9 @@ def measureADomain(thdno, priority, domain) -> int:
                 {
                     "new nameservers": nss,
                     "old nameservers": domainNSS[domain],
-                    "old reply nameservers": oldReplyNss
+                    "old reply nameservers": oldReplyNss,
+                    "super details": superdetails,
+                    "auth details": authdetails
                 },
                 ttl
             )

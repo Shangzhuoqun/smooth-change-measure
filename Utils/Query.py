@@ -55,7 +55,7 @@ def unique(x: list):
             k += 1
     del x[k:]
 
-def GetAuthFromSuper(domain) -> Tuple[list, int]:
+def GetAuthFromSuper(domain) -> Tuple[list, int, dict]:
     
     ns_ip = dict()
 
@@ -63,9 +63,12 @@ def GetAuthFromSuper(domain) -> Tuple[list, int]:
         flag = False
         servernames = []
         ttl = 3600*24*365
+        details = dict() # 各个上级给出的应答
         for sname, sip in servers:
             cmd = f'dig @{sip} {domain} ns +all'
             lines = dig(cmd)
+            tempns = []
+            tempnsip = dict()
             for line in lines:
                 attrs = line.split()
                 ttype = attrs[3]
@@ -73,6 +76,7 @@ def GetAuthFromSuper(domain) -> Tuple[list, int]:
                 if ttype == 'ns':
                     ttl = min(ttl, curttl)
                     servernames.append(attrs[4])
+                    tempns.append(attrs[4])
                     if attrs[0] == domain:
                         flag = True
                 elif ttype == 'a':
@@ -81,6 +85,18 @@ def GetAuthFromSuper(domain) -> Tuple[list, int]:
                         ns_ip[attrs[0]] = {attrs[4]}
                     else:
                         ns_ip[attrs[0]].add(attrs[4])
+                    if attrs[0] not in tempnsip:
+                        tempnsip[attrs[0]] = {attrs[4]}
+                    else:
+                        tempnsip[attrs[0]].add(attrs[4])
+        
+            unique(tempns)
+            resp = []
+            for tns in tempns:
+                if tns in tempnsip:
+                    resp.extend([tns, tip] for tip in tempnsip[tns])
+            details[f'{sname} {sip}'] = resp
+            
         unique(servernames)
         nss = []
         for ns in servernames:
@@ -92,7 +108,7 @@ def GetAuthFromSuper(domain) -> Tuple[list, int]:
                     ttl = min(ttl, curttl)
                     nss.extend([[ns, ip] for ip in ips])
 
-        return (nss, ttl) if (flag or len(nss) == 0) else recurse(domain, nss)
+        return (nss, ttl, details) if (flag or len(nss) == 0) else recurse(domain, nss)
     
     return recurse(domain.lower(), RootServers)
 
@@ -151,15 +167,17 @@ def GetAuthFromAuth(domain, nsip) -> Tuple[list, int]:
     unique(nss)
     return nss, ttl
 
-def GetAuthFromAuths(domain, nsips) -> Tuple[list, int]:
+def GetAuthFromAuths(domain, nsips) -> Tuple[list, int, dict]:
     nss = []
     ttl = 3600*24*365
+    details = dict()
     for nsip in nsips:
         tnss, tttl = GetAuthFromAuth(domain, nsip)
+        details[f'{nsip[0]} {nsip[1]}'] = tnss
         ttl = min(ttl, tttl)
         nss.extend(tnss)
     unique(nss)
-    return nss, ttl
+    return nss, ttl, details
 
 # nss = GetAuthFromSuper("cn.")
 # print(GetAuthFromAuths('cn.', nss))
