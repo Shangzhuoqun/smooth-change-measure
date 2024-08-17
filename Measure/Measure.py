@@ -65,6 +65,13 @@ def checkEqual(a, b):
 
     return True
 
+def checkContainWithOld(a, b, old):    
+    for i in b:
+        if i not in a and i not in old:
+            return False
+
+    return True
+
 def checkContain(a, b):
     if len(b) > len(a):
         return False
@@ -120,7 +127,7 @@ def measureADomain(thdno, priority, domain) -> int:
         return ttl
     else:
         oldReplyNss, _, authdetails = Query.GetAuthFromAuths(domain, domainNSS[domain])
-        if not checkContain(oldReplyNss, nss):
+        if not checkContainWithOld(oldReplyNss, nss, domainNSS[domain]):
             domainChangeInfo[domain][5] += 1
             msg = makeMsg(
                 "not smooth change",
@@ -178,7 +185,7 @@ def checkAlive(thdno, priority, domain, nsip, startTime) -> int:
             ttl
         )
         logging.warning(msg)
-        return -1
+        return -2
     
     msg = makeMsg(
         "server alive",
@@ -196,7 +203,8 @@ def checkAlive(thdno, priority, domain, nsip, startTime) -> int:
 
 def timingExe(func, args): # args[0]是使用的线程编号，args[1]是优先级，func必须返回一个ttl，代表延后时间
     ttl = func(*args)
-    if ttl != -1:
+    if ttl != -2:
+        if ttl == -1: ttl = Conf.MaxTTL
         schedules[args[0]].enter(getTTL(ttl), args[1], timingExe, (func, args,))
 
 def StartMeasure():

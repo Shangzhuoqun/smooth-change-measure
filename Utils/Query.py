@@ -103,7 +103,7 @@ def GetAuthFromSuper(domain) -> Tuple[list, int, dict]:
             if ns in ns_ip:
                 nss.extend([[ns, ip] for ip in ns_ip[ns]])
             else:
-                ips, curttl = getIPFromAuths(ns, servers)
+                ips, curttl = getIPStartWithRoot(ns, servers)
                 if len(ips) != 0:
                     ttl = min(ttl, curttl)
                     nss.extend([[ns, ip] for ip in ips])
@@ -111,6 +111,55 @@ def GetAuthFromSuper(domain) -> Tuple[list, int, dict]:
         return (nss, ttl, details) if (flag or len(nss) == 0) else recurse(domain, nss)
     
     return recurse(domain.lower(), RootServers)
+
+def getIPStartWithRoot(domain):
+    ns_ip = dict()
+
+    def recurse(domain, servers):
+        flag = False
+        servernames = []
+        ttl = 3600*24*365
+        for sname, sip in servers:
+            cmd = f'dig @{sip} {domain} a'
+            lines = dig(cmd)
+            tempns = []
+            tempnsip = dict()
+            for line in lines:
+                attrs = line.split()
+                ttype = attrs[3]
+                curttl = int(attrs[1])
+                if ttype == 'ns':
+                    ttl = min(ttl, curttl)
+                    servernames.append(attrs[4])
+                    tempns.append(attrs[4])
+                elif ttype == 'a':
+                    ttl = min(ttl, curttl)
+                    if attrs[0] not in ns_ip:
+                        ns_ip[attrs[0]] = {attrs[4]}
+                    else:
+                        ns_ip[attrs[0]].add(attrs[4])
+                    if attrs[0] not in tempnsip:
+                        tempnsip[attrs[0]] = {attrs[4]}
+                    else:
+                        tempnsip[attrs[0]].add(attrs[4])
+                    if attrs[0] == domain:
+                        flag = True
+        
+            unique(tempns)
+            resp = []
+            for tns in tempns:
+                if tns in tempnsip:
+                    resp.extend([tns, tip] for tip in tempnsip[tns])
+            
+        unique(servernames)
+        nss = []
+        for ns in servernames:
+            if ns in ns_ip:
+                nss.extend([[ns, ip] for ip in ns_ip[ns]])
+        return (ns_ip[domain], ttl) if (flag == True or len(nss) == 0) else recurse(domain, nss)
+
+    return recurse(domain, RootServers)
+    
 
 def getIPFromAuth(name, nsip) -> Tuple[list, int]:
     ns, ip = nsip
